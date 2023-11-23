@@ -21,6 +21,68 @@ module Formattable
   end
 end
 
+module Displayable
+  include Formattable
+
+  def display_welcome_message(winning_score)
+    prompt("Welcome to Tic Tac Toe! First to #{winning_score} " \
+           "rounds wins")
+    puts ""
+  end
+
+  def display_who_moves_first(first_mover)
+    prompt("#{first_mover} moving first")
+    sleep(2)
+  end
+
+  def display_current_score(player1, player2)
+    prompt("Current score: #{player1.name} #{player1.score} - " \
+           "#{player2.name} #{player2.score}")
+  end
+
+  def display_board(player1, player2, board)
+    prompt("You're #{player1.marker}. #{player2} is #{player2.marker}")
+    puts ""
+    board.draw
+    puts ""
+  end
+
+  def display_round_winner(winner_name, human_name, computer_name)
+    case winner_name
+    when human_name then prompt("You won this round!")
+    when computer_name then prompt("#{computer_name} won this round!")
+    else prompt("It's a tie!")
+    end
+
+    sleep(2)
+  end
+
+  def display_new_round_message
+    prompt("Starting the next round")
+    sleep(1)
+  end
+
+  def display_game_winner(winner_name, human_name, computer_name, winning_score)
+    case winner_name
+    when human_name then prompt("You reached #{winning_score}" \
+                                "rounds first. Congratulations!")
+    when computer_name then prompt("#{computer_name} reached " \
+                                   "#{winning_score} rounds first. Unlucky!")
+    end
+  end
+
+  def display_play_again_message
+    clear
+    prompt("Starting a new game")
+    sleep(1)
+    puts ""
+  end
+
+  def display_goodbye_message
+    prompt("Thanks for playing Tic Tac Toe!")
+  end
+end
+
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] +
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] +
@@ -35,17 +97,23 @@ class Board
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
   def draw
-    puts "     |     |"
-    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}"
-    puts "     |     |"
-    puts "-----+-----+-----"
-    puts "     |     |"
-    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}"
-    puts "     |     |"
-    puts "-----+-----+-----"
-    puts "     |     |"
-    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}"
-    puts "     |     |"
+    puts "1        |2        |3"
+    puts "         |         |"
+    puts "    #{@squares[1]}    |    #{@squares[2]}    |    #{@squares[3]}"
+    puts "         |         |"
+    puts "         |         |"
+    puts "---------+---------+--------"
+    puts "4        |5        |6"
+    puts "         |         |"
+    puts "    #{@squares[4]}    |    #{@squares[5]}    |    #{@squares[6]}"
+    puts "         |         |"
+    puts "         |         |"
+    puts "---------+---------+--------"
+    puts "7        |8        |9"
+    puts "         |         |"
+    puts "    #{@squares[7]}    |    #{@squares[8]}    |    #{@squares[9]}"
+    puts "         |         |"
+    puts "         |         |"
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
@@ -134,9 +202,11 @@ end
 
 class Player
   attr_reader :marker, :name
+  attr_accessor :score
 
   def initialize(board)
     @board = board
+    @score = 0
   end
 
   def to_s
@@ -175,7 +245,8 @@ class Human < Player
 
   def choose_who_moves_first(opponent)
     turn_choice = ""
-    prompt("Who should move first? (please select a number between 1 and 3)")
+    prompt("Who should start the first round? " \
+           "(please select a number between 1 and 3)")
     puts "1. #{@name}\n2. #{opponent}\n3. Random"
 
     loop do
@@ -268,51 +339,9 @@ class Computer < Player
   end
 end
 
-class Score
-  include Formattable
-  WINNING_SCORE = 5
-
-  def initialize(marker1, marker2)
-    @player1 = { marker: marker1, score: 0 }
-    @player2 = { marker: marker2, score: 0 }
-  end
-
-  def increment(round_winner)
-    if round_winner == @player1[:marker]
-      @player1[:score] += 1
-    elsif round_winner == @player2[:marker]
-      @player2[:score] += 1
-    end
-  end
-
-  def current(marker)
-    if marker == @player1[:marker]
-      @player1[:score]
-    elsif marker == @player2[:marker]
-      @player2[:score]
-    end
-  end
-
-  def winning_score_reached?
-    @player1[:score] == WINNING_SCORE || @player2[:score] == WINNING_SCORE
-  end
-
-  def highest
-    if @player1[:score] > @player2[:score]
-      @player1[:marker]
-    elsif @player1[:score] < @player2[:score]
-      @player2[:marker]
-    end
-  end
-
-  def reset
-    @player1[:score] = 0
-    @player2[:score] = 0
-  end
-end
-
 class TTTGame
-  include Formattable
+  WINNING_SCORE = 5
+  include Formattable, Displayable
 
   def initialize
     @board = Board.new
@@ -330,16 +359,10 @@ class TTTGame
 
   def setup_game
     clear
-    display_welcome_message
+    display_welcome_message(WINNING_SCORE)
     set_names
     set_markers
     set_turn_order
-  end
-
-  def display_welcome_message
-    prompt("Welcome to Tic Tac Toe! First to #{Score::WINNING_SCORE} rounds " \
-           "wins")
-    puts ""
   end
 
   def set_names
@@ -350,18 +373,12 @@ class TTTGame
   def set_markers
     @human.choose_marker
     @computer.choose_marker(@human.marker)
-    @scores = Score.new(@human.marker, @computer.marker)
   end
 
   def set_turn_order
-    turn_choice = @human.choose_who_moves_first(@computer.name)
-    prompt("#{turn_choice} moving first")
-    @first_turn = case turn_choice
-                  when @human.name then @human.marker
-                  else @computer.marker
-                  end
-    @current_marker = @first_turn
-    sleep(1)
+    @first_turn = @human.choose_who_moves_first(@computer.name)
+    @current_move = @first_turn
+    display_who_moves_first(@first_turn)
   end
 
   def play_game
@@ -369,97 +386,74 @@ class TTTGame
       play_round
 
       if game_over?
-        determine_final_result
+        determine_game_winner
         break unless play_again?
-        reset_game(reset_score: true)
+        reset_board(new_game: true)
       else
-        reset_game
+        reset_board
       end
     end
   end
 
-  def display_goodbye_message
-    prompt("Thanks for playing Tic Tac Toe!")
+  def play_round
+    show_game_state
+
+    loop do
+      current_player_moves
+      break if @board.someone_won? || @board.full?
+      show_game_state if human_turn?
+    end
+
+    end_round
   end
 
-  def clear_screen_and_display_board
+  def show_game_state
     clear
-    display_board
-  end
-
-  def display_board
-    prompt("You're #{@human.marker}. #{@computer} is #{@computer.marker}")
-    puts ""
-    @board.draw
-    puts ""
+    display_current_score(@human, @computer)
+    display_board(@human, @computer, @board)
   end
 
   def current_player_moves
     if human_turn?
       @human.move
-      @current_marker = @computer.marker
+      @current_move = @computer.name
     else
       @computer.move
-      @current_marker = @human.marker
+      @current_move = @human.name
     end
   end
 
   def human_turn?
-    @current_marker == @human.marker
+    @current_move == @human.name
   end
 
-  def play_round
-    display_board
+  def end_round
+    round_winner = @board.winning_marker
 
-    loop do
-      current_player_moves
-      break if @board.someone_won? || @board.full?
-      clear_screen_and_display_board if human_turn?
+    if round_winner == @human.marker
+      @human.score += 1
+      winner_name = @human.name
+    elsif round_winner == @computer.marker
+      @computer.score += 1
+      winner_name = @computer.name
     end
 
-    determine_result
-  end
-
-  def determine_result
-    winner = @board.winning_marker
-    @scores.increment(winner)
-    display_result(winner)
-  end
-
-  def display_result(winner)
-    clear_screen_and_display_board
-
-    case winner
-    when @human.marker then prompt("You won this round!")
-    when @computer.marker then prompt("#{@computer} won this round!")
-    else prompt("It's a tie!")
-    end
-
-    show_current_score
-  end
-
-  def show_current_score
-    prompt("Current score: #{@human} #{@scores.current(@human.marker)} - " \
-           "#{@computer} #{@scores.current(@computer.marker)} ")
-    sleep(2)
+    show_game_state
+    display_round_winner(winner_name, @human.name, @computer.name)
   end
 
   def game_over?
-    @scores.winning_score_reached?
+    @human.score == WINNING_SCORE || @computer.score == WINNING_SCORE
   end
 
-  def determine_final_result
-    final_winner = @scores.highest
-    display_final_result(final_winner)
-  end
-
-  def display_final_result(winner)
-    case winner
-    when @human.marker then prompt("You reached #{Score::WINNING_SCORE} " \
-                                   "rounds first. Congratulations!")
-    else prompt("#{@computer} reached #{Score::WINNING_SCORE} " \
-                "rounds first. Unlucky!")
+  def determine_game_winner
+    if @human.score > @computer.score
+      winner_name = @human.name
+    elsif @human.score < @computer.score
+      winner_name = @computer.name
     end
+
+    display_game_winner(winner_name, @human.name, @computer.name, WINNING_SCORE)
   end
 
   def play_again?
@@ -468,27 +462,31 @@ class TTTGame
     repeat_choice.downcase.start_with?('y')
   end
 
-  def reset_game(reset_score: false)
+  def reset_board(new_game: false)
     @board.reset
-    @current_marker = @first_turn
-    clear
-    if reset_score
-      @scores.reset
+
+    if new_game
+      reset_scores
       display_play_again_message
+      set_turn_order
     else
+      switch_first_turn
       display_new_round_message
+      display_who_moves_first(@first_turn)
     end
   end
 
-  def display_new_round_message
-    prompt("Starting the next round")
-    sleep(1)
+  def reset_scores
+    @human.score = 0
+    @computer.score = 0
   end
 
-  def display_play_again_message
-    prompt("Starting a new game")
-    sleep(1)
-    puts ""
+  def switch_first_turn
+    @first_turn = case @first_turn
+                  when @human.name then @computer.name
+                  when @computer.name then @human.name
+                  end
+    @current_move = @first_turn
   end
 end
 
